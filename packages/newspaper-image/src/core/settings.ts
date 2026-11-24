@@ -68,3 +68,28 @@ export const hexToRgb = (hex: string) =>
   [1, 3, 5].map(
     (i) => parseInt(hex.slice(i, i + 2), 16) / 255
   ) as [number, number, number]
+
+export type UniformValue = number | [number, number, number]
+
+// The fragment shader uniform for each setting but `soft`, which
+// feeds lodBias at draw time.
+export const settingUniforms = (
+  s: PrintSettings
+): [string, UniformValue][] => [
+  ['uInk', hexToRgb(s.ink)],
+  ['uPaper', hexToRgb(s.paper)],
+  ['uPaperOpacity', s.paperOpacity],
+  ['uCell', s.cell],
+  ['uAngle', s.angle],
+  ['uLo', s.lo],
+  ['uHi', s.hi],
+  ['uGamma', s.gamma],
+  ['uGain', s.gain],
+  ['uRough', s.rough],
+  ['uRoughScale', s.roughScale],
+  ['uGrain', s.grain],
+  ['uMottle', s.mottle],
+  ['uMisreg', s.misreg],
+  ['uSweep', s.sweepMs],
+  ['uPrint', s.printMs]
+]

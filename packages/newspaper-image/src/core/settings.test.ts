@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest'
 
+import { FRAGMENT_SHADER } from './printShader.js'
 import {
   DEFAULT_SETTINGS,
   hexToRgb,
-  resolveSettings
+  type PrintSettings,
+  resolveSettings,
+  settingUniforms
 } from './settings.js'
 
 // jnaose src/components/Backdrop/print.ts PRINT at 5e8a66b.
@@ -78,5 +81,62 @@ describe('hexToRgb', () => {
       0xea / 255,
       0xdf / 255
     ])
+  })
+})
+
+describe('settingUniforms', () => {
+  const declared = new Set(
+    [...FRAGMENT_SHADER.matchAll(/^uniform \w+ ([^;]+);/gm)]
+      .flatMap((m) => m[1].split(','))
+      .map((name) => name.trim())
+  )
+  const changed = (key: keyof PrintSettings) => {
+    const value = DEFAULT_SETTINGS[key]
+    return {
+      ...DEFAULT_SETTINGS,
+      [key]: typeof value === 'number' ? value + 1 : '#123456'
+    }
+  }
+  const differing = (a: PrintSettings, b: PrintSettings) => {
+    const before = new Map(settingUniforms(a))
+    return settingUniforms(b)
+      .filter(
+        ([name, value]) =>
+          JSON.stringify(before.get(name)) !==
+          JSON.stringify(value)
+      )
+      .map(([name]) => name)
+  }
+  const keys = Object.keys(
+    DEFAULT_SETTINGS
+  ) as (keyof PrintSettings)[]
+
+  it('maps every setting but soft to its own uniform', () => {
+    const names = keys
+      .filter((key) => key !== 'soft')
+      .map((key) => {
+        const diff = differing(DEFAULT_SETTINGS, changed(key))
+        expect(diff, key).toHaveLength(1)
+        return diff[0]
+      })
+    expect(new Set(names).size).toBe(names.length)
+  })
+
+  it('leaves soft out', () => {
+    expect(
+      differing(DEFAULT_SETTINGS, changed('soft'))
+    ).toEqual([])
+  })
+
+  it('names only uniforms the fragment shader declares', () => {
+    expect(declared.size).toBeGreaterThan(0)
+    for (const [name] of settingUniforms(DEFAULT_SETTINGS))
+      expect(declared, name).toContain(name)
+  })
+
+  it('passes colours as 0–1 RGB', () => {
+    expect(
+      new Map(settingUniforms(DEFAULT_SETTINGS)).get('uInk')
+    ).toEqual(hexToRgb(DEFAULT_SETTINGS.ink))
   })
 })
