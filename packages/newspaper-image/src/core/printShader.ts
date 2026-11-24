@@ -2,7 +2,7 @@
 // prototypes/print-raster/index.html to the CMYK print, the reveal
 // without merge, the dissolve scroll fade and the dissolve from
 // blank paper. Function names match the prototype's. Positions are
-// viewport CSS px, y down.
+// view CSS px, y down.
 
 export const VERTEX_SHADER = `#version 300 es
 in vec2 a;
@@ -11,12 +11,12 @@ void main() { gl_Position = vec4(a, 0., 1.); }`
 export const FRAGMENT_SHADER = `#version 300 es
 precision highp float;
 out vec4 o;
-// uOrigin: the canvas's top-left in the viewport (CSS px).
-// uCanvas: the canvas backing store (device px). uView: the viewport.
+// uOrigin: the canvas's top-left in the view (CSS px).
+// uCanvas: the canvas backing store (device px). uView: the view.
 uniform vec2 uOrigin, uCanvas, uView;
 uniform float uDpr;
 uniform sampler2D uPhoto, uMono;
-// Placement in the viewport: offset.xy, size.zw (CSS px).
+// Placement in the view: offset.xy, size.zw (CSS px).
 uniform vec4 uPhotoX, uMonoX;
 uniform float uPhotoLod, uMonoLod;
 uniform vec3 uInk, uPaper;
@@ -91,7 +91,7 @@ void main() {
   // 0 = home's mono photo, 1 = the colour photo.
   float r = t <= 0. ? 0. : e3(t / uPrint);
   vec3 monoClean = monoAt(p);
-  vec3 photoClean = photoAt(p, 0.);
+  vec3 photoClean = texture(uPhoto, (p - uPhotoX.xy) / uPhotoX.zw).rgb;
   vec2 mt = (p - uMonoX.xy) / uMonoX.zw;
   vec4 ink = mix(
     inkOf(textureLod(uMono, mt, uMonoLod).rgb),
