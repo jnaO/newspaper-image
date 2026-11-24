@@ -1,0 +1,6 @@
+The photographs in this directory (bg.jpg, forest.jpg, fireweed.jpg)
+are © the copyright holder named in the repository's LICENSE file.
+All rights reserved.
+
+They are not covered by the repository's MIT licence and may not be
+copied, modified or redistributed without permission.
