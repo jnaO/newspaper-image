@@ -12,7 +12,13 @@ packages/newspaper-image/
   tsconfig.json           tsc src → dist with declarations; *.test.ts excluded
   vitest.config.ts        Node environment, src/**/*.test.ts
   src/index.ts            React entry, starts with 'use client'; placeholder
-  src/core/index.ts       core barrel; imports nothing from React
+  src/core/
+    index.ts              THE core barrel: everything public is exported here; imports nothing from React
+    settings.ts           PrintSettings (prototype key names), DEFAULT_SETTINGS (frozen, = jnaose PRINT at 5e8a66b), resolveSettings(...parts) (skips undefined parts and values), hexToRgb
+    clock.ts              clamp01, totalMs(settings) = sweepMs + printMs, revealTime(from, forward, elapsed, total, backSpeed = 1), mirror(time, total)
+    geometry.ts           lodBias(texelsPerCssPx, soft), Fit ('cover' | 'fill'), Placement { fit?, position?: [x, y] 0–1 }, placeRect (default cover, centred), sourceSize(TexImageSource) (duck-typed, runs in Node)
+    loadImage.ts          loadImage(src, crossOrigin?): crossOrigin is set before src
+    *.test.ts             Vitest, Node environment, pure logic
 apps/site/                Next.js check page (package name `site`, private)
   app/layout.tsx, app/page.tsx
   AGENTS.md               written by `next dev`
@@ -33,5 +39,7 @@ Run from the repo root.
 - `pnpm test`: `pnpm -r test` (Vitest in `packages/newspaper-image`).
 - `pnpm build`: builds the package with `tsc`, then `next build` in `apps/site`.
 - `pnpm dev`: builds the package once, then runs `tsc --watch` and `next dev` in parallel.
+
+Relative imports in `packages/newspaper-image/src` end in `.js` (Biome `useImportExtensions` enforces it there): `tsc` copies specifiers verbatim, and Node's ESM loader does not resolve extensionless ones in `dist`.
 
 `apps/site/tsconfig.json` is rewritten by `next build`/`next dev` and is excluded from Biome.
