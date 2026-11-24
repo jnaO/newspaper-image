@@ -1,0 +1,70 @@
+// The print settings, under the print-raster prototype's key names
+// (jnaose prototypes/print-raster/index.html, "Copy settings").
+export interface PrintSettings {
+  // #rrggbb
+  ink: string
+  // #rrggbb
+  paper: string
+  paperOpacity: number
+  // Halftone cell size, CSS px.
+  cell: number
+  // Degrees.
+  angle: number
+  lo: number
+  hi: number
+  gamma: number
+  gain: number
+  // Tone blur in mip levels at one texel per CSS px.
+  soft: number
+  rough: number
+  roughScale: number
+  grain: number
+  mottle: number
+  misreg: number
+  sweepMs: number
+  printMs: number
+}
+
+// jnaose src/components/Backdrop/print.ts PRINT at 5e8a66b.
+export const DEFAULT_SETTINGS: Readonly<PrintSettings> =
+  Object.freeze({
+    ink: '#161616',
+    paper: '#efeadf',
+    paperOpacity: 1,
+    cell: 3.1,
+    angle: 45,
+    lo: 0.02,
+    hi: 0.72,
+    gamma: 1.12,
+    gain: 0.08,
+    soft: 1.2,
+    rough: 0.35,
+    roughScale: 1.4,
+    grain: 0.1,
+    mottle: 0.04,
+    misreg: 0.2,
+    sweepMs: 370,
+    printMs: 460
+  })
+
+// DEFAULT_SETTINGS overlaid with each part in turn. Undefined parts
+// and undefined values are skipped.
+export function resolveSettings(
+  ...parts: (Partial<PrintSettings> | undefined)[]
+): PrintSettings {
+  const settings: Record<string, unknown> = {
+    ...DEFAULT_SETTINGS
+  }
+  for (const part of parts) {
+    if (!part) continue
+    for (const [key, value] of Object.entries(part)) {
+      if (value !== undefined) settings[key] = value
+    }
+  }
+  return settings as unknown as PrintSettings
+}
+
+export const hexToRgb = (hex: string) =>
+  [1, 3, 5].map(
+    (i) => parseInt(hex.slice(i, i + 2), 16) / 255
+  ) as [number, number, number]
