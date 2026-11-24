@@ -19,10 +19,16 @@
     "lineWidth": 60
   },
   "assist": {
-    "actions": { "source": { "organizeImports": "on" } }
+    "actions": {
+      "source": {
+        "organizeImports": "on"
+      }
+    }
   },
   "linter": {
-    "domains": { "react": "recommended" }
+    "domains": {
+      "react": "recommended"
+    }
   },
   "javascript": {
     "formatter": {
@@ -39,7 +45,26 @@
   "overrides": [
     {
       "includes": ["apps/site/**"],
-      "linter": { "domains": { "next": "recommended" } }
+      "linter": {
+        "domains": {
+          "next": "recommended"
+        }
+      }
+    },
+    {
+      "includes": ["packages/newspaper-image/src/**"],
+      "linter": {
+        "rules": {
+          "correctness": {
+            "useImportExtensions": {
+              "level": "error",
+              "options": {
+                "forceJsExtensions": true
+              }
+            }
+          }
+        }
+      }
     }
   ]
 }
