@@ -1,0 +1,67 @@
+.main {
+  min-height: 100vh;
+}
+
+.site {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.images {
+  display: block;
+  width: min(80vw, 960px);
+  aspect-ratio: 3 / 2;
+  margin: 4rem auto;
+}
+
+.unavailable {
+  position: relative;
+  margin: 1rem;
+  padding: 0.75rem;
+  background: #fff;
+  color: #900;
+}
+
+.panel {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 1;
+  display: grid;
+  gap: 0.4rem;
+  width: 16rem;
+  padding: 0.6rem 0.75rem;
+  border-radius: 6px;
+  background: rgb(255 255 255 / 0.92);
+  color: #111;
+  font:
+    13px / 1.4 system-ui,
+    sans-serif;
+}
+
+.panel summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.row {
+  display: flex;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.field {
+  display: grid;
+  grid-template-columns: 7rem 1fr;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.field input {
+  min-width: 0;
+}
