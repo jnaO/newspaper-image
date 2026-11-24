@@ -11,6 +11,13 @@ export {
   sourceSize
 } from './geometry.js'
 export { loadImage } from './loadImage.js'
+export type {
+  Printer,
+  PrinterOptions,
+  PrintState,
+  PrintView
+} from './printer.js'
+export { createPrinter } from './printer.js'
 export type { PrintSettings } from './settings.js'
 export {
   DEFAULT_SETTINGS,
