@@ -14,10 +14,12 @@ packages/newspaper-image/
   src/index.ts            React entry, starts with 'use client'; placeholder
   src/core/
     index.ts              THE core barrel: everything public is exported here; imports nothing from React
-    settings.ts           PrintSettings (prototype key names), DEFAULT_SETTINGS (frozen, = jnaose PRINT at 5e8a66b), resolveSettings(...parts) (skips undefined parts and values), hexToRgb
+    settings.ts           PrintSettings (prototype key names), DEFAULT_SETTINGS (frozen, = jnaose PRINT at 5e8a66b), resolveSettings(...parts) (skips undefined parts and values), hexToRgb; settingUniforms(settings): THE settings → fragment-shader uniform table ([name, value] pairs; ink/paper as 0–1 RGB; soft left out, it feeds lodBias at draw time). Adding a setting means adding its row here; settings.test.ts fails on a setting without a uniform or a uniform the shader does not declare
     clock.ts              clamp01, totalMs(settings) = sweepMs + printMs, revealTime(from, forward, elapsed, total, backSpeed = 1), mirror(time, total)
     geometry.ts           lodBias(texelsPerCssPx, soft), Fit ('cover' | 'fill'), Placement { fit?, position?: [x, y] 0–1 }, placeRect (default cover, centred), sourceSize(TexImageSource) (duck-typed, runs in Node)
     loadImage.ts          loadImage(src, crossOrigin?): crossOrigin is set before src
+    printShader.ts        THE GLSL (VERTEX_SHADER, FRAGMENT_SHADER): jnaose printShader.ts at 5e8a66b, except the clean "to" lookup uses automatic LOD. GLSL names stay the prototype's: uMono = "from", uPhoto = "to". Not exported from the barrel
+    printer.ts            createPrinter(canvas, { settings?, preserveDrawingBuffer?, onLost?, onRestore? }) → { setFrom(source, placement?), setTo(source, placement?), setSettings(settings), draw(view, state), dispose() } | null (no WebGL2, or the shader fails to build). Settings are applied at build, by setSettings and on context restore; setSettings and uploads clear the skip-identical-draw key. draw places each side with placeRect over sourceSize, lod = lodBias(source width / placed width, settings.soft)
     *.test.ts             Vitest, Node environment, pure logic
 apps/site/                Next.js check page (package name `site`, private)
   app/layout.tsx, app/page.tsx
@@ -28,6 +30,7 @@ apps/site/                Next.js check page (package name `site`, private)
 
 - `newspaper-image` is the React entry and begins with `'use client'`. It may re-export types only: a server component that imports a value from a `'use client'` module gets a client reference instead of the value.
 - `newspaper-image/core` carries every value (settings, helpers, `createPrinter`) and imports without React installed.
+- The jnao.se Backdrop reproduces as `setFrom(bg, { fit: 'cover', position: [0, 0.5] })` and `setTo(paintArtCanvas, { fit: 'fill' })` with `origin [0, 0]`.
 - `apps/site` resolves the package through its `dist`, so the package is built before the app (`apps/site`'s `build` and the root `dev` both do this).
 
 ## Commands
