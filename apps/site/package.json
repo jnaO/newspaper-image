@@ -1,0 +1,21 @@
+{
+  "name": "site",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "pnpm --filter newspaper-image build && next build",
+    "dev": "next dev"
+  },
+  "dependencies": {
+    "newspaper-image": "workspace:*",
+    "next": "16.4.6",
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "typescript": "^7.0.2"
+  }
+}
