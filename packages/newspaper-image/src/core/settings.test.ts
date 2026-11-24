@@ -94,10 +94,14 @@ describe('settingUniforms', () => {
     const value = DEFAULT_SETTINGS[key]
     return {
       ...DEFAULT_SETTINGS,
-      [key]: typeof value === 'number' ? value + 1 : '#123456'
+      [key]:
+        typeof value === 'number' ? value + 1 : '#123456'
     }
   }
-  const differing = (a: PrintSettings, b: PrintSettings) => {
+  const differing = (
+    a: PrintSettings,
+    b: PrintSettings
+  ) => {
     const before = new Map(settingUniforms(a))
     return settingUniforms(b)
       .filter(
@@ -115,7 +119,10 @@ describe('settingUniforms', () => {
     const names = keys
       .filter((key) => key !== 'soft')
       .map((key) => {
-        const diff = differing(DEFAULT_SETTINGS, changed(key))
+        const diff = differing(
+          DEFAULT_SETTINGS,
+          changed(key)
+        )
         expect(diff, key).toHaveLength(1)
         return diff[0]
       })
