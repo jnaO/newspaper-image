@@ -26,6 +26,9 @@ export interface PrintSettings {
   misreg: number
   sweepMs: number
   printMs: number
+  // 0 dissolve through the screen, 1 crossfade, 2 refine (the screen
+  // shrinks towards the device pixel), 3 off.
+  fadeStyle: 0 | 1 | 2 | 3
 }
 
 // jnaose src/components/Backdrop/print.ts PRINT at 5e8a66b, plus the
@@ -50,7 +53,8 @@ export const DEFAULT_SETTINGS: Readonly<PrintSettings> =
     specks: 0,
     misreg: 0.2,
     sweepMs: 370,
-    printMs: 460
+    printMs: 460,
+    fadeStyle: 0
   })
 
 // DEFAULT_SETTINGS overlaid with each part in turn. Undefined parts
@@ -99,5 +103,6 @@ export const settingUniforms = (
   ['uSpecks', s.specks],
   ['uMisreg', s.misreg],
   ['uSweep', s.sweepMs],
-  ['uPrint', s.printMs]
+  ['uPrint', s.printMs],
+  ['uFadeStyle', s.fadeStyle]
 ]

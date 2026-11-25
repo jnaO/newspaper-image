@@ -24,7 +24,7 @@ packages/newspaper-image/
 apps/site/                Next.js check page (package name `site`, private); imports only newspaper-image/core
   app/layout.tsx          root layout, globals.css
   app/page.tsx            server component rendering PrintCheck
-  app/PrintCheck.tsx      'use client' check page: scene switch (site | images), time/fade/press sliders, mode select, Play (time 0 → totalMs by requestAnimationFrame), cell/angle/sweepMs/ink/paper inputs through resolveSettings, reset to DEFAULT_SETTINGS; says so when createPrinter returns null
+  app/PrintCheck.tsx      'use client' check page: scene switch (site | images), time/fade/press sliders, mode and fadeStyle selects, Play (time 0 → totalMs by requestAnimationFrame), cell/angle/sweepMs/ink/paper inputs through resolveSettings, reset to DEFAULT_SETTINGS; says so when createPrinter returns null
   app/PrintCanvas.tsx     a canvas with its own createPrinter: backing store Math.round(W·dpr) × Math.round(H·dpr), redraw on resize and on settings/state change
   app/scenes.ts           site scene (the jnao.se Backdrop: window view, from = bg.jpg cover [0, 0.5], to = paintArt canvas fill, repainted on width change); images scene (canvas CSS box view, bg.jpg → forest.jpg, cover centred)
   app/siteArt.ts          copy of jnaose print.ts paintArt/artTop/pickArt/FADE/RESERVE_REM/LANDSCAPE/PORTRAIT at 5e8a66b, with /samples paths

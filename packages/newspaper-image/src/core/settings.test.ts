@@ -34,7 +34,8 @@ const JNAOSE_PRINT = {
 // (CMYK)" sets them.
 const PROTOTYPE_ADDITIONS = {
   mode: 1,
-  specks: 0
+  specks: 0,
+  fadeStyle: 0
 }
 
 describe('DEFAULT_SETTINGS', () => {

@@ -20,7 +20,7 @@ type Scene = 'site' | 'images'
 
 type NumberKey = 'cell' | 'angle' | 'specks' | 'sweepMs'
 type ColourKey = 'ink' | 'paper'
-type SelectKey = 'mode'
+type SelectKey = 'mode' | 'fadeStyle'
 
 const NUMBER_INPUTS: [NumberKey, number][] = [
   ['cell', 0.1],
@@ -31,7 +31,8 @@ const NUMBER_INPUTS: [NumberKey, number][] = [
 const COLOUR_INPUTS: ColourKey[] = ['ink', 'paper']
 // Option labels, the value being the index.
 const SELECT_INPUTS: [SelectKey, string[]][] = [
-  ['mode', ['one ink', 'CMYK']]
+  ['mode', ['one ink', 'CMYK']],
+  ['fadeStyle', ['dissolve', 'crossfade', 'refine', 'off']]
 ]
 
 export function PrintCheck() {

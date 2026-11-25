@@ -30,10 +30,15 @@ uniform float uRough, uRoughScale, uGrain, uMottle, uSpecks, uMisreg;
 uniform float uTime, uSweep, uPrint;
 // 0 printed .. 1 clean photo.
 uniform float uFade;
+// 0 dissolve, 1 crossfade, 2 refine, 3 off.
+uniform float uFadeStyle;
 // 0 blank paper (uPaper) .. 1 printed.
 uniform float uPress;
 
 const float PI = 3.14159265;
+
+// The screen cell spot() prints with, set first thing in main.
+float gCell;
 
 float hash(vec2 p) {
   p = fract(p * vec2(123.34, 456.21));
@@ -62,7 +67,7 @@ mat2 rot(float a) { float c = cos(a), s = sin(a); return mat2(c, -s, s, c); }
 
 // Round-dot spot function: 0 at the cell centre, 1 at the corners.
 float spot(vec2 p, float angle) {
-  vec2 q = rot(angle) * p / uCell;
+  vec2 q = rot(angle) * p / gCell;
   return .5 - .25 * (cos(2. * PI * q.x) + cos(2. * PI * q.y));
 }
 
@@ -109,6 +114,8 @@ vec4 inkOf(vec3 c) {
 
 void main() {
   vec2 p = uOrigin + vec2(gl_FragCoord.x, uCanvas.y - gl_FragCoord.y) / uDpr;
+  // Refine: the screen shrinks towards the device pixel as the fade runs.
+  gCell = uFadeStyle == 2. ? mix(uCell, max(.5 / uDpr, .25), pow(uFade, .6)) : uCell;
   float t = uTime - length(p) / length(uView) * uSweep;
 
   // 0 = home's mono photo, 1 = the colour photo.
@@ -150,7 +157,9 @@ void main() {
     col = mix(col, uInk, specksAt(p + 3.5, 29.) * .8);
   }
 
-  col = mix(col, clean, max(plate(p, radians(uAngle) + .3, uFade * 1.05), step(1., uFade)));
+  if (uFadeStyle == 0.) col = mix(col, clean, max(plate(p, radians(uAngle) + .3, uFade * 1.05), step(1., uFade)));
+  else if (uFadeStyle == 1.) col = mix(col, clean, uFade);
+  else if (uFadeStyle == 2.) col = mix(col, clean, smoothstep(.55, 1., uFade));
   col = mix(uPaper, col, max(plate(p, radians(uAngle) + .3, uPress * 1.05), step(1., uPress)));
   o = vec4(col, 1.);
 }`
