@@ -37,7 +37,7 @@ const NUMBER_INPUTS: [NumberKey, number][] = [
 const COLOUR_INPUTS: ColourKey[] = ['ink', 'paper']
 // Option labels, the value being the index.
 const SELECT_INPUTS: [SelectKey, string[]][] = [
-  ['mode', ['one ink', 'CMYK']],
+  ['mode', ['one ink', 'CMYK', 'light dots']],
   ['fadeStyle', ['dissolve', 'crossfade', 'refine', 'off']]
 ]
 

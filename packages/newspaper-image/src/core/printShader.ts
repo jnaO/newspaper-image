@@ -21,7 +21,9 @@ uniform sampler2D uPhoto, uMono;
 // Placement in the view: offset.xy, size.zw (CSS px).
 uniform vec4 uPhotoX, uMonoX;
 uniform float uPhotoLod, uMonoLod;
-// 0 one ink, 1 CMYK.
+// The light-dots dot-size sample's mip level.
+uniform float uDotLod;
+// 0 one ink, 1 CMYK, 2 light dots.
 uniform float uMode;
 uniform vec3 uInk, uPaper;
 uniform float uPaperOpacity, uCell, uAngle;
@@ -59,6 +61,10 @@ float eio(float t) { t = clamp(t, 0., 1.); return t < .5 ? 4. * t * t * t : 1. -
 
 vec3 photoAt(vec2 p, float lod) {
   return textureLod(uPhoto, (p - uPhotoX.xy) / uPhotoX.zw, lod).rgb;
+}
+// The "to" at automatic LOD.
+vec3 photoCleanAt(vec2 p) {
+  return texture(uPhoto, (p - uPhotoX.xy) / uPhotoX.zw).rgb;
 }
 vec3 monoAt(vec2 p) {
   return texture(uMono, (p - uMonoX.xy) / uMonoX.zw).rgb;
@@ -102,6 +108,32 @@ float toneDark(float lum) {
 
 float lumOf(vec3 c) { return dot(c, vec3(.2126, .7152, .0722)); }
 
+// Light dots: photo-coloured dots on a lattice at 45° about the view
+// centre, swelling into the photo. rgb = the clean "to", a = coverage.
+vec4 currentLook(vec2 p, float time) {
+  vec2 c = uView * .5;
+  vec2 d = p - c;
+  const float k = .70710678;
+  vec2 uv = vec2(d.x * k + d.y * k, -d.x * k + d.y * k) / uCell;
+  vec2 base = floor(uv + .5);
+  float cov = 0.;
+  float diag = length(uView);
+  float full = uCell * .72;
+  for (int j = -1; j <= 1; j++) for (int i = -1; i <= 1; i++) {
+    vec2 g = (base + vec2(float(i), float(j))) * uCell;
+    vec2 ctr = c + vec2(g.x * k - g.y * k, g.x * k + g.y * k);
+    float t = time - length(ctr) / diag * uSweep;
+    if (t <= 0.) continue;
+    float ink = sqrt(lumOf(photoAt(ctr, uDotLod))) * .62 * uCell;
+    float pr = e3(t / uPrint) * ink;
+    float m = clamp((t - uSweep * .5) / uMerge, 0., 1.);
+    float r = pr + (full - pr) * eio(m);
+    if (r < .3) continue;
+    cov = max(cov, clamp((r - distance(p, ctr)) * uDpr + .5, 0., 1.));
+  }
+  return vec4(photoCleanAt(p), cov);
+}
+
 // Ink per plate: x, y, z = C, M, Y (unused in one ink); w = K, or
 // the single ink.
 vec4 inkOf(vec3 c) {
@@ -122,46 +154,53 @@ void main() {
   // 0 = home's mono photo, 1 = the colour photo.
   float r = t <= 0. ? 0. : e3(t / uPrint);
   vec3 monoClean = monoAt(p);
-  vec3 photoClean = texture(uPhoto, (p - uPhotoX.xy) / uPhotoX.zw).rgb;
-  vec2 mt = (p - uMonoX.xy) / uMonoX.zw;
-  vec4 ink = mix(
-    inkOf(textureLod(uMono, mt, uMonoLod).rgb),
-    inkOf(photoAt(p, uPhotoLod)),
-    r
-  );
-  float mottle = 1. - uMottle * .55 * (vnoise(p / 38.) * .7 + vnoise(p / 9.) * .3);
-
-  float grain = (vnoise(p / .8) * .55 + vnoise(p / 5.) * .3 + vnoise(p / 40.) * .15 - .5) * uGrain * .35;
-  vec3 paper = clamp(uPaper * (1. + grain), 0., 1.);
+  vec3 photoClean = photoCleanAt(p);
   vec3 clean = mix(monoClean, photoClean, r);
-  vec3 col = mix(clean, paper, uPaperOpacity);
+  vec3 col;
 
-  if (uMode == 0.) {
-    col = mix(col, uInk, plate(p, radians(uAngle), ink.w) * mottle);
+  if (uMode == 2.) {
+    vec4 c = currentLook(p, uTime);
+    col = t <= 0. ? monoClean : mix(monoClean, c.rgb, c.a);
   } else {
-    vec2 m = vec2(uMisreg);
-    float cc = plate(p + m * vec2(.7, -.3), radians(15.), ink.x) * mottle;
-    float mm = plate(p + m * vec2(-.4, .6), radians(75.), ink.y) * mottle;
-    float yy = plate(p + m * vec2(.2, .5), radians(0.), ink.z) * mottle;
-    float kk = plate(p, radians(45.), ink.w) * mottle;
-    col *= mix(vec3(1.), vec3(0., .66, .93), cc);
-    col *= mix(vec3(1.), vec3(.92, .08, .55), mm);
-    col *= mix(vec3(1.), vec3(1., .93, .05), yy);
-    col = mix(col, uInk, kk);
-  }
+    vec2 mt = (p - uMonoX.xy) / uMonoX.zw;
+    vec4 ink = mix(
+      inkOf(textureLod(uMono, mt, uMonoLod).rgb),
+      inkOf(photoAt(p, uPhotoLod)),
+      r
+    );
+    float mottle = 1. - uMottle * .55 * (vnoise(p / 38.) * .7 + vnoise(p / 9.) * .3);
 
-  // Dust: paper-coloured flecks in the ink, ink-coloured specks on
-  // the paper. specksAt prints a speck wherever hash(cell + seed) is
-  // exactly 0, even at uSpecks 0.
-  if (uSpecks > 0.) {
-    col = mix(col, paper, specksAt(p, 11.) * uPaperOpacity);
-    col = mix(col, uInk, specksAt(p + 3.5, 29.) * .8);
-  }
+    float grain = (vnoise(p / .8) * .55 + vnoise(p / 5.) * .3 + vnoise(p / 40.) * .15 - .5) * uGrain * .35;
+    vec3 paper = clamp(uPaper * (1. + grain), 0., 1.);
+    col = mix(clean, paper, uPaperOpacity);
 
-  if (uSettle > .5) {
-    // Merge: the clean "to" floods in through the screen after the sweep.
-    float m = t <= 0. ? 0. : eio((t - uSweep * .5) / uMerge);
-    col = mix(col, photoClean, max(plate(p, radians(uAngle) + .3, m * 1.05), step(1., m)));
+    if (uMode == 0.) {
+      col = mix(col, uInk, plate(p, radians(uAngle), ink.w) * mottle);
+    } else {
+      vec2 m = vec2(uMisreg);
+      float cc = plate(p + m * vec2(.7, -.3), radians(15.), ink.x) * mottle;
+      float mm = plate(p + m * vec2(-.4, .6), radians(75.), ink.y) * mottle;
+      float yy = plate(p + m * vec2(.2, .5), radians(0.), ink.z) * mottle;
+      float kk = plate(p, radians(45.), ink.w) * mottle;
+      col *= mix(vec3(1.), vec3(0., .66, .93), cc);
+      col *= mix(vec3(1.), vec3(.92, .08, .55), mm);
+      col *= mix(vec3(1.), vec3(1., .93, .05), yy);
+      col = mix(col, uInk, kk);
+    }
+
+    // Dust: paper-coloured flecks in the ink, ink-coloured specks on
+    // the paper. specksAt prints a speck wherever hash(cell + seed) is
+    // exactly 0, even at uSpecks 0.
+    if (uSpecks > 0.) {
+      col = mix(col, paper, specksAt(p, 11.) * uPaperOpacity);
+      col = mix(col, uInk, specksAt(p + 3.5, 29.) * .8);
+    }
+
+    if (uSettle > .5) {
+      // Merge: the clean "to" floods in through the screen after the sweep.
+      float m = t <= 0. ? 0. : eio((t - uSweep * .5) / uMerge);
+      col = mix(col, photoClean, max(plate(p, radians(uAngle) + .3, m * 1.05), step(1., m)));
+    }
   }
 
   if (uFadeStyle == 0.) col = mix(col, clean, max(plate(p, radians(uAngle) + .3, uFade * 1.05), step(1., uFade)));

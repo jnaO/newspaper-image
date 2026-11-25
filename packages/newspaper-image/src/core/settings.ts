@@ -1,8 +1,8 @@
 // The print settings, under the print-raster prototype's key names
 // (jnaose prototypes/print-raster/index.html, "Copy settings").
 export interface PrintSettings {
-  // 0 one ink, 1 CMYK.
-  mode: 0 | 1
+  // 0 one ink, 1 CMYK, 2 light dots.
+  mode: 0 | 1 | 2
   // #rrggbb
   ink: string
   // #rrggbb
