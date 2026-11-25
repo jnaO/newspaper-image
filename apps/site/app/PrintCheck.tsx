@@ -18,13 +18,14 @@ import {
 
 type Scene = 'site' | 'images'
 
-type NumberKey = 'cell' | 'angle' | 'sweepMs'
+type NumberKey = 'cell' | 'angle' | 'specks' | 'sweepMs'
 type ColourKey = 'ink' | 'paper'
 type SelectKey = 'mode'
 
 const NUMBER_INPUTS: [NumberKey, number][] = [
   ['cell', 0.1],
   ['angle', 1],
+  ['specks', 0.01],
   ['sweepMs', 10]
 ]
 const COLOUR_INPUTS: ColourKey[] = ['ink', 'paper']

@@ -22,6 +22,7 @@ export interface PrintSettings {
   roughScale: number
   grain: number
   mottle: number
+  specks: number
   misreg: number
   sweepMs: number
   printMs: number
@@ -46,6 +47,7 @@ export const DEFAULT_SETTINGS: Readonly<PrintSettings> =
     roughScale: 1.4,
     grain: 0.1,
     mottle: 0.04,
+    specks: 0,
     misreg: 0.2,
     sweepMs: 370,
     printMs: 460
@@ -94,6 +96,7 @@ export const settingUniforms = (
   ['uRoughScale', s.roughScale],
   ['uGrain', s.grain],
   ['uMottle', s.mottle],
+  ['uSpecks', s.specks],
   ['uMisreg', s.misreg],
   ['uSweep', s.sweepMs],
   ['uPrint', s.printMs]

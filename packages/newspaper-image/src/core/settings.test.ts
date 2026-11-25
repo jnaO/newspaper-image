@@ -33,7 +33,8 @@ const JNAOSE_PRINT = {
 // The keys jnaose PRINT lacks, as the prototype preset "Your pick
 // (CMYK)" sets them.
 const PROTOTYPE_ADDITIONS = {
-  mode: 1
+  mode: 1,
+  specks: 0
 }
 
 describe('DEFAULT_SETTINGS', () => {

@@ -26,7 +26,7 @@ uniform float uMode;
 uniform vec3 uInk, uPaper;
 uniform float uPaperOpacity, uCell, uAngle;
 uniform float uLo, uHi, uGamma, uGain;
-uniform float uRough, uRoughScale, uGrain, uMottle, uMisreg;
+uniform float uRough, uRoughScale, uGrain, uMottle, uSpecks, uMisreg;
 uniform float uTime, uSweep, uPrint;
 // 0 printed .. 1 clean photo.
 uniform float uFade;
@@ -77,6 +77,15 @@ float plate(vec2 p, float angle, float dark) {
   float sp = spot(p, angle) + roughAt(p) * uRough * .5;
   float w = max(fwidth(sp), 1e-4);
   return clamp((dark - sp) / w + .5, 0., 1.) * step(.002, dark);
+}
+
+float specksAt(vec2 p, float seed) {
+  vec2 cell = floor(p / 7.);
+  float h = hash(cell + seed);
+  if (h > uSpecks * .25) return 0.;
+  vec2 ctr = (cell + vec2(hash(cell + seed + 3.1), hash(cell + seed + 7.7))) * 7.;
+  float r = .4 + hash(cell + seed + 1.3) * 1.2;
+  return clamp((r - distance(p, ctr)) * uDpr + .5, 0., 1.);
 }
 
 float toneDark(float lum) {
@@ -131,6 +140,14 @@ void main() {
     col *= mix(vec3(1.), vec3(.92, .08, .55), mm);
     col *= mix(vec3(1.), vec3(1., .93, .05), yy);
     col = mix(col, uInk, kk);
+  }
+
+  // Dust: paper-coloured flecks in the ink, ink-coloured specks on
+  // the paper. specksAt prints a speck wherever hash(cell + seed) is
+  // exactly 0, even at uSpecks 0.
+  if (uSpecks > 0.) {
+    col = mix(col, paper, specksAt(p, 11.) * uPaperOpacity);
+    col = mix(col, uInk, specksAt(p + 3.5, 29.) * .8);
   }
 
   col = mix(col, clean, max(plate(p, radians(uAngle) + .3, uFade * 1.05), step(1., uFade)));
