@@ -24,9 +24,10 @@ packages/newspaper-image/
 apps/site/                Next.js check page (package name `site`, private); imports only newspaper-image/core
   app/layout.tsx          root layout, globals.css
   app/page.tsx            server component rendering PrintCheck
-  app/PrintCheck.tsx      'use client' check page: scene switch (site | images), time/fade/press sliders, mode and fadeStyle selects, settle checkbox, Play (time 0 → totalMs by requestAnimationFrame), cell/angle/specks/sweepMs/mergeMs/ink/paper inputs through resolveSettings, reset to DEFAULT_SETTINGS; says so when createPrinter returns null
+  app/PrintCheck.tsx      'use client' check page: scene switch (SCENES: site | images | prototype), one button per prototype preset (setOverrides(preset), so keys a preset leaves out come from DEFAULT_SETTINGS), time/fade/press sliders, mode and fadeStyle selects, settle checkbox, Play (time 0 → totalMs by requestAnimationFrame), cell/angle/specks/sweepMs/mergeMs/ink/paper inputs through resolveSettings, reset to DEFAULT_SETTINGS; says so when createPrinter returns null
   app/PrintCanvas.tsx     a canvas with its own createPrinter: backing store Math.round(W·dpr) × Math.round(H·dpr), redraw on resize and on settings/state change
-  app/scenes.ts           site scene (the jnao.se Backdrop: window view, from = bg.jpg cover [0, 0.5], to = paintArt canvas fill, repainted on width change); images scene (canvas CSS box view, bg.jpg → forest.jpg, cover centred)
+  app/scenes.ts           site scene (the jnao.se Backdrop: window view, from = bg.jpg cover [0, 0.5], to = paintArt canvas fill, repainted on width change); images scene (canvas CSS box view, bg.jpg → forest.jpg, cover centred); prototype scene (the print-raster prototype's page: window view, from = bg.jpg, to = forest.jpg landscape / fireweed.jpg portrait, both cover [0, 0.5], to swapped on an orientation-changing resize)
+  app/presets.ts          PRESETS: the print-raster prototype's six presets at 5e8a66b, verbatim (Partial<PrintSettings>; biome-ignore format keeps the prototype's layout). The settings tool (#7) reuses it
   app/siteArt.ts          copy of jnaose print.ts paintArt/artTop/pickArt/FADE/RESERVE_REM/LANDSCAPE/PORTRAIT at 5e8a66b, with /samples paths
   public/samples/         bg.jpg, forest.jpg, fireweed.jpg: the owner's photographs, all rights reserved, NOT covered by the MIT licence (NOTICE.txt)
   AGENTS.md               written by `next dev`

@@ -8,15 +8,40 @@ import {
 import { useMemo, useRef, useState } from 'react'
 
 import styles from './check.module.css'
-import { PrintCanvas } from './PrintCanvas'
+import {
+  PrintCanvas,
+  type PrintCanvasProps
+} from './PrintCanvas'
+import { PRESETS } from './presets'
 import {
   boxView,
   setupImages,
+  setupPrototype,
   setupSite,
   siteView
 } from './scenes'
 
-type Scene = 'site' | 'images'
+const SCENES = {
+  site: {
+    className: 'site',
+    view: siteView,
+    setup: setupSite
+  },
+  images: {
+    className: 'images',
+    view: boxView,
+    setup: setupImages
+  },
+  prototype: {
+    className: 'site',
+    view: siteView,
+    setup: setupPrototype
+  }
+} satisfies Record<
+  string,
+  Pick<PrintCanvasProps, 'className' | 'view' | 'setup'>
+>
+type Scene = keyof typeof SCENES
 
 type NumberKey =
   | 'cell'
@@ -78,28 +103,18 @@ export function PrintCheck() {
     value: PrintSettings[K] | undefined
   ) => setOverrides((o) => ({ ...o, [key]: value }))
 
-  const canvas =
-    scene === 'site' ? (
-      <PrintCanvas
-        key="site"
-        className={styles.site}
-        settings={settings}
-        state={state}
-        view={siteView}
-        setup={setupSite}
-        onUnavailable={() => setUnavailable(true)}
-      />
-    ) : (
-      <PrintCanvas
-        key="images"
-        className={styles.images}
-        settings={settings}
-        state={state}
-        view={boxView}
-        setup={setupImages}
-        onUnavailable={() => setUnavailable(true)}
-      />
-    )
+  const { className, view, setup } = SCENES[scene]
+  const canvas = (
+    <PrintCanvas
+      key={scene}
+      className={styles[className]}
+      settings={settings}
+      state={state}
+      view={view}
+      setup={setup}
+      onUnavailable={() => setUnavailable(true)}
+    />
+  )
 
   return (
     <main className={styles.main}>
@@ -114,7 +129,7 @@ export function PrintCheck() {
         <summary>Print check</summary>
         <fieldset className={styles.row}>
           <legend>Scene</legend>
-          {(['site', 'images'] as const).map((s) => (
+          {(Object.keys(SCENES) as Scene[]).map((s) => (
             <label key={s}>
               <input
                 type="radio"
@@ -124,6 +139,18 @@ export function PrintCheck() {
               />{' '}
               {s}
             </label>
+          ))}
+        </fieldset>
+        <fieldset className={styles.presets}>
+          <legend>Prototype presets</legend>
+          {Object.entries(PRESETS).map(([name, preset]) => (
+            <button
+              key={name}
+              type="button"
+              onClick={() => setOverrides(preset)}
+            >
+              {name}
+            </button>
           ))}
         </fieldset>
         <label className={styles.field}>

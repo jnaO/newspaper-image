@@ -1,5 +1,6 @@
 import {
   loadImage,
+  type Placement,
   type Printer,
   type PrintView
 } from 'newspaper-image/core'
@@ -61,6 +62,52 @@ export function setupSite(
     cancelled = true
     cancelAnimationFrame(frame)
     window.removeEventListener('resize', onResize)
+  }
+}
+
+const PLACE_LEFT: Placement = {
+  fit: 'cover',
+  position: [0, 0.5]
+}
+
+// The print-raster prototype's photo for the window: forest.jpg when
+// landscape, fireweed.jpg when portrait.
+const prototypePhoto = () =>
+  window.innerWidth >= window.innerHeight
+    ? '/samples/forest.jpg'
+    : '/samples/fireweed.jpg'
+
+// The print-raster prototype's page: the window is the view, "from" =
+// bg.jpg and "to" = prototypePhoto(), both cover, left and vertically
+// centred. "to" is swapped when a resize changes the orientation.
+export function setupPrototype(
+  printer: Printer,
+  redraw: () => void
+) {
+  let cancelled = false
+  let photo = ''
+  let loads = 0
+  loadImage('/samples/bg.jpg').then((img) => {
+    if (cancelled) return
+    printer.setFrom(img, PLACE_LEFT)
+    redraw()
+  })
+  const pick = () => {
+    const src = prototypePhoto()
+    if (src === photo) return
+    photo = src
+    const loadNo = ++loads
+    loadImage(src).then((img) => {
+      if (cancelled || loadNo !== loads) return
+      printer.setTo(img, PLACE_LEFT)
+      redraw()
+    })
+  }
+  pick()
+  window.addEventListener('resize', pick)
+  return () => {
+    cancelled = true
+    window.removeEventListener('resize', pick)
   }
 }
 
