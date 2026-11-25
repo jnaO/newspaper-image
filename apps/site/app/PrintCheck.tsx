@@ -20,6 +20,7 @@ type Scene = 'site' | 'images'
 
 type NumberKey = 'cell' | 'angle' | 'sweepMs'
 type ColourKey = 'ink' | 'paper'
+type SelectKey = 'mode'
 
 const NUMBER_INPUTS: [NumberKey, number][] = [
   ['cell', 0.1],
@@ -27,6 +28,10 @@ const NUMBER_INPUTS: [NumberKey, number][] = [
   ['sweepMs', 10]
 ]
 const COLOUR_INPUTS: ColourKey[] = ['ink', 'paper']
+// Option labels, the value being the index.
+const SELECT_INPUTS: [SelectKey, string[]][] = [
+  ['mode', ['one ink', 'CMYK']]
+]
 
 export function PrintCheck() {
   const [scene, setScene] = useState<Scene>('site')
@@ -159,6 +164,28 @@ export function PrintCheck() {
             }
           />
         </label>
+        {SELECT_INPUTS.map(([key, labels]) => (
+          <label key={key} className={styles.field}>
+            <span>{key}</span>
+            <select
+              value={settings[key]}
+              onChange={(e) =>
+                override(
+                  key,
+                  Number(
+                    e.target.value
+                  ) as PrintSettings[SelectKey]
+                )
+              }
+            >
+              {labels.map((label, value) => (
+                <option key={label} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </label>
+        ))}
         {NUMBER_INPUTS.map(([key, step]) => (
           <label key={key} className={styles.field}>
             <span>{key}</span>

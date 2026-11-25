@@ -30,9 +30,18 @@ const JNAOSE_PRINT = {
   printMs: 460
 }
 
+// The keys jnaose PRINT lacks, as the prototype preset "Your pick
+// (CMYK)" sets them.
+const PROTOTYPE_ADDITIONS = {
+  mode: 1
+}
+
 describe('DEFAULT_SETTINGS', () => {
-  it('equals the site print settings', () => {
-    expect(DEFAULT_SETTINGS).toEqual(JNAOSE_PRINT)
+  it('equals the site print settings plus the prototype keys', () => {
+    expect(DEFAULT_SETTINGS).toEqual({
+      ...JNAOSE_PRINT,
+      ...PROTOTYPE_ADDITIONS
+    })
   })
 
   it('is frozen', () => {

@@ -1,8 +1,10 @@
-// GLSL ES 3.00, reduced from the fragment shader in
-// prototypes/print-raster/index.html to the CMYK print, the reveal
-// without merge, the dissolve scroll fade and the dissolve from
-// blank paper. Function names match the prototype's. Positions are
-// view CSS px, y down.
+// GLSL ES 3.00: the fragment shader in jnaose
+// prototypes/print-raster/index.html at 5e8a66b, with jnao.se's
+// positioning (uOrigin, uCanvas, uView), the tone blur as mip levels
+// set per side at draw time (uMonoLod, uPhotoLod), uPress, and the
+// clean "to" lookup at automatic LOD. uMode, uFadeStyle and uSettle
+// are floats holding whole numbers. Function names match the
+// prototype's. Positions are view CSS px, y down.
 
 export const VERTEX_SHADER = `#version 300 es
 in vec2 a;
@@ -19,6 +21,8 @@ uniform sampler2D uPhoto, uMono;
 // Placement in the view: offset.xy, size.zw (CSS px).
 uniform vec4 uPhotoX, uMonoX;
 uniform float uPhotoLod, uMonoLod;
+// 0 one ink, 1 CMYK.
+uniform float uMode;
 uniform vec3 uInk, uPaper;
 uniform float uPaperOpacity, uCell, uAngle;
 uniform float uLo, uHi, uGamma, uGain;
@@ -75,8 +79,18 @@ float plate(vec2 p, float angle, float dark) {
   return clamp((dark - sp) / w + .5, 0., 1.) * step(.002, dark);
 }
 
-// Ink per plate: x, y, z = C, M, Y; w = K.
+float toneDark(float lum) {
+  float t = clamp((lum - uLo) / max(uHi - uLo, 1e-3), 0., 1.);
+  float d = 1. - pow(t, uGamma);
+  return clamp(d + uGain * 4. * d * (1. - d), 0., 1.);
+}
+
+float lumOf(vec3 c) { return dot(c, vec3(.2126, .7152, .0722)); }
+
+// Ink per plate: x, y, z = C, M, Y (unused in one ink); w = K, or
+// the single ink.
 vec4 inkOf(vec3 c) {
+  if (uMode == 0.) return vec4(0., 0., 0., toneDark(lumOf(c)));
   vec3 c3 = pow(clamp((c - uLo) / max(uHi - uLo, 1e-3), 0., 1.), vec3(uGamma));
   float k = 1. - max(max(c3.r, c3.g), c3.b);
   vec3 cmy = (1. - c3 - k) / max(1. - k, 1e-3);
@@ -105,15 +119,19 @@ void main() {
   vec3 clean = mix(monoClean, photoClean, r);
   vec3 col = mix(clean, paper, uPaperOpacity);
 
-  vec2 m = vec2(uMisreg);
-  float cc = plate(p + m * vec2(.7, -.3), radians(15.), ink.x) * mottle;
-  float mm = plate(p + m * vec2(-.4, .6), radians(75.), ink.y) * mottle;
-  float yy = plate(p + m * vec2(.2, .5), radians(0.), ink.z) * mottle;
-  float kk = plate(p, radians(45.), ink.w) * mottle;
-  col *= mix(vec3(1.), vec3(0., .66, .93), cc);
-  col *= mix(vec3(1.), vec3(.92, .08, .55), mm);
-  col *= mix(vec3(1.), vec3(1., .93, .05), yy);
-  col = mix(col, uInk, kk);
+  if (uMode == 0.) {
+    col = mix(col, uInk, plate(p, radians(uAngle), ink.w) * mottle);
+  } else {
+    vec2 m = vec2(uMisreg);
+    float cc = plate(p + m * vec2(.7, -.3), radians(15.), ink.x) * mottle;
+    float mm = plate(p + m * vec2(-.4, .6), radians(75.), ink.y) * mottle;
+    float yy = plate(p + m * vec2(.2, .5), radians(0.), ink.z) * mottle;
+    float kk = plate(p, radians(45.), ink.w) * mottle;
+    col *= mix(vec3(1.), vec3(0., .66, .93), cc);
+    col *= mix(vec3(1.), vec3(.92, .08, .55), mm);
+    col *= mix(vec3(1.), vec3(1., .93, .05), yy);
+    col = mix(col, uInk, kk);
+  }
 
   col = mix(col, clean, max(plate(p, radians(uAngle) + .3, uFade * 1.05), step(1., uFade)));
   col = mix(uPaper, col, max(plate(p, radians(uAngle) + .3, uPress * 1.05), step(1., uPress)));

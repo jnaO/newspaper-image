@@ -1,6 +1,8 @@
 // The print settings, under the print-raster prototype's key names
 // (jnaose prototypes/print-raster/index.html, "Copy settings").
 export interface PrintSettings {
+  // 0 one ink, 1 CMYK.
+  mode: 0 | 1
   // #rrggbb
   ink: string
   // #rrggbb
@@ -25,9 +27,11 @@ export interface PrintSettings {
   printMs: number
 }
 
-// jnaose src/components/Backdrop/print.ts PRINT at 5e8a66b.
+// jnaose src/components/Backdrop/print.ts PRINT at 5e8a66b, plus the
+// keys it lacks as the prototype preset "Your pick (CMYK)" sets them.
 export const DEFAULT_SETTINGS: Readonly<PrintSettings> =
   Object.freeze({
+    mode: 1,
     ink: '#161616',
     paper: '#efeadf',
     paperOpacity: 1,
@@ -76,6 +80,7 @@ export type UniformValue = number | [number, number, number]
 export const settingUniforms = (
   s: PrintSettings
 ): [string, UniformValue][] => [
+  ['uMode', s.mode],
   ['uInk', hexToRgb(s.ink)],
   ['uPaper', hexToRgb(s.paper)],
   ['uPaperOpacity', s.paperOpacity],
