@@ -1,6 +1,8 @@
 // The print settings, under the print-raster prototype's key names
 // (jnaose prototypes/print-raster/index.html, "Copy settings").
 export interface PrintSettings {
+  // 0 one ink, 1 CMYK, 2 light dots.
+  mode: 0 | 1 | 2
   // #rrggbb
   ink: string
   // #rrggbb
@@ -20,14 +22,24 @@ export interface PrintSettings {
   roughScale: number
   grain: number
   mottle: number
+  specks: number
   misreg: number
+  // 1: after the sweep the clean "to" floods in through the screen
+  // over mergeMs.
+  settle: 0 | 1
   sweepMs: number
   printMs: number
+  mergeMs: number
+  // 0 dissolve through the screen, 1 crossfade, 2 refine (the screen
+  // shrinks towards the device pixel), 3 off.
+  fadeStyle: 0 | 1 | 2 | 3
 }
 
-// jnaose src/components/Backdrop/print.ts PRINT at 5e8a66b.
+// jnaose src/components/Backdrop/print.ts PRINT at 5e8a66b, plus the
+// keys it lacks as the prototype preset "Your pick (CMYK)" sets them.
 export const DEFAULT_SETTINGS: Readonly<PrintSettings> =
   Object.freeze({
+    mode: 1,
     ink: '#161616',
     paper: '#efeadf',
     paperOpacity: 1,
@@ -42,9 +54,13 @@ export const DEFAULT_SETTINGS: Readonly<PrintSettings> =
     roughScale: 1.4,
     grain: 0.1,
     mottle: 0.04,
+    specks: 0,
     misreg: 0.2,
+    settle: 0,
     sweepMs: 370,
-    printMs: 460
+    printMs: 460,
+    mergeMs: 440,
+    fadeStyle: 0
   })
 
 // DEFAULT_SETTINGS overlaid with each part in turn. Undefined parts
@@ -76,6 +92,7 @@ export type UniformValue = number | [number, number, number]
 export const settingUniforms = (
   s: PrintSettings
 ): [string, UniformValue][] => [
+  ['uMode', s.mode],
   ['uInk', hexToRgb(s.ink)],
   ['uPaper', hexToRgb(s.paper)],
   ['uPaperOpacity', s.paperOpacity],
@@ -89,7 +106,11 @@ export const settingUniforms = (
   ['uRoughScale', s.roughScale],
   ['uGrain', s.grain],
   ['uMottle', s.mottle],
+  ['uSpecks', s.specks],
   ['uMisreg', s.misreg],
   ['uSweep', s.sweepMs],
-  ['uPrint', s.printMs]
+  ['uPrint', s.printMs],
+  ['uSettle', s.settle],
+  ['uMerge', s.mergeMs],
+  ['uFadeStyle', s.fadeStyle]
 ]

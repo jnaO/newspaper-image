@@ -8,25 +8,63 @@ import {
 import { useMemo, useRef, useState } from 'react'
 
 import styles from './check.module.css'
-import { PrintCanvas } from './PrintCanvas'
+import {
+  PrintCanvas,
+  type PrintCanvasProps
+} from './PrintCanvas'
+import { PRESETS } from './presets'
 import {
   boxView,
   setupImages,
+  setupPrototype,
   setupSite,
   siteView
 } from './scenes'
 
-type Scene = 'site' | 'images'
+const SCENES = {
+  site: {
+    className: 'site',
+    view: siteView,
+    setup: setupSite
+  },
+  images: {
+    className: 'images',
+    view: boxView,
+    setup: setupImages
+  },
+  prototype: {
+    className: 'site',
+    view: siteView,
+    setup: setupPrototype
+  }
+} satisfies Record<
+  string,
+  Pick<PrintCanvasProps, 'className' | 'view' | 'setup'>
+>
+type Scene = keyof typeof SCENES
 
-type NumberKey = 'cell' | 'angle' | 'sweepMs'
+type NumberKey =
+  | 'cell'
+  | 'angle'
+  | 'specks'
+  | 'sweepMs'
+  | 'mergeMs'
 type ColourKey = 'ink' | 'paper'
+type SelectKey = 'mode' | 'fadeStyle'
 
 const NUMBER_INPUTS: [NumberKey, number][] = [
   ['cell', 0.1],
   ['angle', 1],
-  ['sweepMs', 10]
+  ['specks', 0.01],
+  ['sweepMs', 10],
+  ['mergeMs', 10]
 ]
 const COLOUR_INPUTS: ColourKey[] = ['ink', 'paper']
+// Option labels, the value being the index.
+const SELECT_INPUTS: [SelectKey, string[]][] = [
+  ['mode', ['one ink', 'CMYK', 'light dots']],
+  ['fadeStyle', ['dissolve', 'crossfade', 'refine', 'off']]
+]
 
 export function PrintCheck() {
   const [scene, setScene] = useState<Scene>('site')
@@ -65,28 +103,18 @@ export function PrintCheck() {
     value: PrintSettings[K] | undefined
   ) => setOverrides((o) => ({ ...o, [key]: value }))
 
-  const canvas =
-    scene === 'site' ? (
-      <PrintCanvas
-        key="site"
-        className={styles.site}
-        settings={settings}
-        state={state}
-        view={siteView}
-        setup={setupSite}
-        onUnavailable={() => setUnavailable(true)}
-      />
-    ) : (
-      <PrintCanvas
-        key="images"
-        className={styles.images}
-        settings={settings}
-        state={state}
-        view={boxView}
-        setup={setupImages}
-        onUnavailable={() => setUnavailable(true)}
-      />
-    )
+  const { className, view, setup } = SCENES[scene]
+  const canvas = (
+    <PrintCanvas
+      key={scene}
+      className={styles[className]}
+      settings={settings}
+      state={state}
+      view={view}
+      setup={setup}
+      onUnavailable={() => setUnavailable(true)}
+    />
+  )
 
   return (
     <main className={styles.main}>
@@ -101,7 +129,7 @@ export function PrintCheck() {
         <summary>Print check</summary>
         <fieldset className={styles.row}>
           <legend>Scene</legend>
-          {(['site', 'images'] as const).map((s) => (
+          {(Object.keys(SCENES) as Scene[]).map((s) => (
             <label key={s}>
               <input
                 type="radio"
@@ -111,6 +139,18 @@ export function PrintCheck() {
               />{' '}
               {s}
             </label>
+          ))}
+        </fieldset>
+        <fieldset className={styles.presets}>
+          <legend>Prototype presets</legend>
+          {Object.entries(PRESETS).map(([name, preset]) => (
+            <button
+              key={name}
+              type="button"
+              onClick={() => setOverrides(preset)}
+            >
+              {name}
+            </button>
           ))}
         </fieldset>
         <label className={styles.field}>
@@ -159,6 +199,28 @@ export function PrintCheck() {
             }
           />
         </label>
+        {SELECT_INPUTS.map(([key, labels]) => (
+          <label key={key} className={styles.field}>
+            <span>{key}</span>
+            <select
+              value={settings[key]}
+              onChange={(e) =>
+                override(
+                  key,
+                  Number(
+                    e.target.value
+                  ) as PrintSettings[SelectKey]
+                )
+              }
+            >
+              {labels.map((label, value) => (
+                <option key={label} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </label>
+        ))}
         {NUMBER_INPUTS.map(([key, step]) => (
           <label key={key} className={styles.field}>
             <span>{key}</span>
@@ -173,6 +235,16 @@ export function PrintCheck() {
             />
           </label>
         ))}
+        <label className={styles.field}>
+          <span>settle</span>
+          <input
+            type="checkbox"
+            checked={settings.settle === 1}
+            onChange={(e) =>
+              override('settle', e.target.checked ? 1 : 0)
+            }
+          />
+        </label>
         {COLOUR_INPUTS.map((key) => (
           <label key={key} className={styles.field}>
             <span>{key}</span>

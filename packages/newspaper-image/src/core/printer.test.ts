@@ -167,6 +167,8 @@ describe('createPrinter', () => {
     expect(uniform('uPhotoLod')).toEqual([
       DEFAULT_SETTINGS.soft + 1
     ])
+    // The light-dots tone sample: 3 levels at one texel per CSS px.
+    expect(uniform('uDotLod')).toEqual([3 + 1])
   })
 
   it('applies new settings live and redraws the same frame', () => {

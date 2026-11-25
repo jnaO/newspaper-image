@@ -60,6 +60,10 @@ export interface PrinterOptions {
   onRestore?: () => void
 }
 
+// The prototype's light-dots dot-size sample LOD, at one texel per
+// CSS px.
+const DOT_LOD = 3
+
 const FROM_UNIT = 0
 const TO_UNIT = 1
 
@@ -268,7 +272,8 @@ export function createPrinter(
     onRestored
   )
 
-  // Where a side lands in the W×H view and its tone-blur mip level.
+  // Where a side lands in the W×H view, its tone-blur mip level and
+  // its light-dots dot-size mip level.
   const place = (
     source: TexImageSource,
     placement: Placement,
@@ -287,7 +292,8 @@ export function createPrinter(
       size.width / rect.width,
       settings.soft
     )
-    return { rect, lod }
+    const dotLod = lodBias(size.width / rect.width, DOT_LOD)
+    return { rect, lod, dotLod }
   }
 
   return {
@@ -336,6 +342,7 @@ export function createPrinter(
       rect4(u.uPhotoX, photo.rect)
       gl.uniform1f(u.uMonoLod, mono.lod)
       gl.uniform1f(u.uPhotoLod, photo.lod)
+      gl.uniform1f(u.uDotLod, photo.dotLod)
       gl.uniform1f(u.uTime, time)
       gl.uniform1f(u.uFade, fade)
       gl.uniform1f(u.uPress, press)

@@ -4,9 +4,12 @@ export const clamp01 = (t: number) =>
   Math.min(Math.max(t, 0), 1)
 
 // The reveal clock's full run, in ms: `time` runs 0 ("from") →
-// totalMs ("to").
+// totalMs ("to"). With settle, one and a half sweeps plus the merge;
+// otherwise one sweep plus one print.
 export const totalMs = (settings: PrintSettings) =>
-  settings.sweepMs + settings.printMs
+  settings.settle
+    ? settings.sweepMs * 1.5 + settings.mergeMs
+    : settings.sweepMs + settings.printMs
 
 // The reveal clock `elapsed` ms after it set off from `from` towards
 // `total` (forward) or towards 0 at `backSpeed` ms of clock per ms.
