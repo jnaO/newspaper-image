@@ -24,8 +24,12 @@ export interface PrintSettings {
   mottle: number
   specks: number
   misreg: number
+  // 1: after the sweep the clean "to" floods in through the screen
+  // over mergeMs.
+  settle: 0 | 1
   sweepMs: number
   printMs: number
+  mergeMs: number
   // 0 dissolve through the screen, 1 crossfade, 2 refine (the screen
   // shrinks towards the device pixel), 3 off.
   fadeStyle: 0 | 1 | 2 | 3
@@ -52,8 +56,10 @@ export const DEFAULT_SETTINGS: Readonly<PrintSettings> =
     mottle: 0.04,
     specks: 0,
     misreg: 0.2,
+    settle: 0,
     sweepMs: 370,
     printMs: 460,
+    mergeMs: 440,
     fadeStyle: 0
   })
 
@@ -104,5 +110,7 @@ export const settingUniforms = (
   ['uMisreg', s.misreg],
   ['uSweep', s.sweepMs],
   ['uPrint', s.printMs],
+  ['uSettle', s.settle],
+  ['uMerge', s.mergeMs],
   ['uFadeStyle', s.fadeStyle]
 ]

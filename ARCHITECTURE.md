@@ -15,7 +15,7 @@ packages/newspaper-image/
   src/core/
     index.ts              THE core barrel: everything public is exported here; imports nothing from React
     settings.ts           PrintSettings (prototype key names), DEFAULT_SETTINGS (frozen, = jnaose PRINT at 5e8a66b plus the keys it lacks as the prototype preset "Your pick (CMYK)" sets them), resolveSettings(...parts) (skips undefined parts and values), hexToRgb; settingUniforms(settings): THE settings → fragment-shader uniform table ([name, value] pairs; ink/paper as 0–1 RGB; soft left out, it feeds lodBias at draw time). Adding a setting means adding its row here; settings.test.ts fails on a setting without a uniform or a uniform the shader does not declare
-    clock.ts              clamp01, totalMs(settings) = sweepMs + printMs, revealTime(from, forward, elapsed, total, backSpeed = 1), mirror(time, total)
+    clock.ts              clamp01, totalMs(settings) = sweepMs * 1.5 + mergeMs with settle, else sweepMs + printMs (prototype total()), revealTime(from, forward, elapsed, total, backSpeed = 1), mirror(time, total)
     geometry.ts           lodBias(texelsPerCssPx, soft), Fit ('cover' | 'fill'), Placement { fit?, position?: [x, y] 0–1 }, placeRect (default cover, centred), sourceSize(TexImageSource) (duck-typed, runs in Node)
     loadImage.ts          loadImage(src, crossOrigin?): crossOrigin is set before src
     printShader.ts        THE GLSL (VERTEX_SHADER, FRAGMENT_SHADER): the fragment shader of jnaose prototypes/print-raster at 5e8a66b, with jnao.se's positioning (uOrigin/uCanvas/uView), per-side tone-blur mip levels (uMonoLod/uPhotoLod), uPress and the clean "to" lookup at automatic LOD. The mode, fadeStyle and settle settings are float uniforms holding whole numbers (applySettings sends every number with uniform1f). GLSL names stay the prototype's: uMono = "from", uPhoto = "to". Not exported from the barrel
@@ -24,7 +24,7 @@ packages/newspaper-image/
 apps/site/                Next.js check page (package name `site`, private); imports only newspaper-image/core
   app/layout.tsx          root layout, globals.css
   app/page.tsx            server component rendering PrintCheck
-  app/PrintCheck.tsx      'use client' check page: scene switch (site | images), time/fade/press sliders, mode and fadeStyle selects, Play (time 0 → totalMs by requestAnimationFrame), cell/angle/sweepMs/ink/paper inputs through resolveSettings, reset to DEFAULT_SETTINGS; says so when createPrinter returns null
+  app/PrintCheck.tsx      'use client' check page: scene switch (site | images), time/fade/press sliders, mode and fadeStyle selects, settle checkbox, Play (time 0 → totalMs by requestAnimationFrame), cell/angle/specks/sweepMs/mergeMs/ink/paper inputs through resolveSettings, reset to DEFAULT_SETTINGS; says so when createPrinter returns null
   app/PrintCanvas.tsx     a canvas with its own createPrinter: backing store Math.round(W·dpr) × Math.round(H·dpr), redraw on resize and on settings/state change
   app/scenes.ts           site scene (the jnao.se Backdrop: window view, from = bg.jpg cover [0, 0.5], to = paintArt canvas fill, repainted on width change); images scene (canvas CSS box view, bg.jpg → forest.jpg, cover centred)
   app/siteArt.ts          copy of jnaose print.ts paintArt/artTop/pickArt/FADE/RESERVE_REM/LANDSCAPE/PORTRAIT at 5e8a66b, with /samples paths

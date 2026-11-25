@@ -18,7 +18,12 @@ import {
 
 type Scene = 'site' | 'images'
 
-type NumberKey = 'cell' | 'angle' | 'specks' | 'sweepMs'
+type NumberKey =
+  | 'cell'
+  | 'angle'
+  | 'specks'
+  | 'sweepMs'
+  | 'mergeMs'
 type ColourKey = 'ink' | 'paper'
 type SelectKey = 'mode' | 'fadeStyle'
 
@@ -26,7 +31,8 @@ const NUMBER_INPUTS: [NumberKey, number][] = [
   ['cell', 0.1],
   ['angle', 1],
   ['specks', 0.01],
-  ['sweepMs', 10]
+  ['sweepMs', 10],
+  ['mergeMs', 10]
 ]
 const COLOUR_INPUTS: ColourKey[] = ['ink', 'paper']
 // Option labels, the value being the index.
@@ -202,6 +208,16 @@ export function PrintCheck() {
             />
           </label>
         ))}
+        <label className={styles.field}>
+          <span>settle</span>
+          <input
+            type="checkbox"
+            checked={settings.settle === 1}
+            onChange={(e) =>
+              override('settle', e.target.checked ? 1 : 0)
+            }
+          />
+        </label>
         {COLOUR_INPUTS.map((key) => (
           <label key={key} className={styles.field}>
             <span>{key}</span>

@@ -35,6 +35,8 @@ const JNAOSE_PRINT = {
 const PROTOTYPE_ADDITIONS = {
   mode: 1,
   specks: 0,
+  settle: 0,
+  mergeMs: 440,
   fadeStyle: 0
 }
 

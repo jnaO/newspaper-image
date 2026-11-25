@@ -27,7 +27,7 @@ uniform vec3 uInk, uPaper;
 uniform float uPaperOpacity, uCell, uAngle;
 uniform float uLo, uHi, uGamma, uGain;
 uniform float uRough, uRoughScale, uGrain, uMottle, uSpecks, uMisreg;
-uniform float uTime, uSweep, uPrint;
+uniform float uTime, uSweep, uPrint, uMerge, uSettle;
 // 0 printed .. 1 clean photo.
 uniform float uFade;
 // 0 dissolve, 1 crossfade, 2 refine, 3 off.
@@ -55,6 +55,7 @@ float vnoise(vec2 p) {
   );
 }
 float e3(float t) { t = 1. - clamp(t, 0., 1.); return 1. - t * t * t; }
+float eio(float t) { t = clamp(t, 0., 1.); return t < .5 ? 4. * t * t * t : 1. - pow(-2. * t + 2., 3.) / 2.; }
 
 vec3 photoAt(vec2 p, float lod) {
   return textureLod(uPhoto, (p - uPhotoX.xy) / uPhotoX.zw, lod).rgb;
@@ -155,6 +156,12 @@ void main() {
   if (uSpecks > 0.) {
     col = mix(col, paper, specksAt(p, 11.) * uPaperOpacity);
     col = mix(col, uInk, specksAt(p + 3.5, 29.) * .8);
+  }
+
+  if (uSettle > .5) {
+    // Merge: the clean "to" floods in through the screen after the sweep.
+    float m = t <= 0. ? 0. : eio((t - uSweep * .5) / uMerge);
+    col = mix(col, photoClean, max(plate(p, radians(uAngle) + .3, m * 1.05), step(1., m)));
   }
 
   if (uFadeStyle == 0.) col = mix(col, clean, max(plate(p, radians(uAngle) + .3, uFade * 1.05), step(1., uFade)));

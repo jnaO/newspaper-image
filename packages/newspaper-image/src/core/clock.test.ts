@@ -25,6 +25,18 @@ describe('totalMs', () => {
       })
     ).toBe(150)
   })
+
+  it('runs one and a half sweeps plus the merge with settle', () => {
+    expect(
+      totalMs({
+        ...DEFAULT_SETTINGS,
+        sweepMs: 100,
+        printMs: 50,
+        mergeMs: 30,
+        settle: 1
+      })
+    ).toBe(180)
+  })
 })
 
 describe('mirror', () => {
