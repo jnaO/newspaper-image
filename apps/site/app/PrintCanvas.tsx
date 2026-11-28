@@ -5,7 +5,8 @@ import {
   type Printer,
   type PrintSettings,
   type PrintState,
-  type PrintView
+  type PrintView,
+  type SharedPrinterOptions
 } from 'newspaper-image/core'
 import { useEffect, useRef } from 'react'
 
@@ -21,9 +22,14 @@ export interface PrintCanvasProps {
     redraw: () => void
   ) => () => void
   onUnavailable: () => void
+  // Read once, at mount. Default createPrinter.
+  create?: (
+    canvas: HTMLCanvasElement,
+    options: SharedPrinterOptions
+  ) => Printer | null
 }
 
-// A canvas printed by its own createPrinter, redrawn on resize and
+// A canvas printed by the printer `create` makes, redrawn on resize and
 // whenever `settings` or `state` change. The backing store is
 // Math.round(W * dpr) × Math.round(H * dpr).
 export function PrintCanvas({
@@ -32,7 +38,8 @@ export function PrintCanvas({
   state,
   view,
   setup,
-  onUnavailable
+  onUnavailable,
+  create = createPrinter
 }: PrintCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const printerRef = useRef<Printer | null>(null)
@@ -56,7 +63,7 @@ export function PrintCanvas({
       }
       printer.draw(v, latest.current.state)
     }
-    const printer = createPrinter(canvas, {
+    const printer = create(canvas, {
       settings: latest.current.settings,
       onRestore: redraw
     })

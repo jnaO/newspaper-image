@@ -1,18 +1,16 @@
+import type { Placement } from './geometry.js'
 import {
-  lodBias,
-  type Placement,
-  placeRect,
-  type Rect,
-  sourceSize
-} from './geometry.js'
-import {
-  FRAGMENT_SHADER,
-  VERTEX_SHADER
-} from './printShader.js'
+  applySettings,
+  build,
+  disposePlate,
+  drawPlate,
+  FROM_UNIT,
+  TO_UNIT,
+  upload
+} from './plate.js'
 import {
   DEFAULT_SETTINGS,
-  type PrintSettings,
-  settingUniforms
+  type PrintSettings
 } from './settings.js'
 
 // Where the canvas sits: the view (CSS px), the canvas's top-left in
@@ -58,135 +56,6 @@ export interface PrinterOptions {
   onLost?: () => void
   // Fires once the restored context has its textures back.
   onRestore?: () => void
-}
-
-// The prototype's light-dots dot-size sample LOD, at one texel per
-// CSS px.
-const DOT_LOD = 3
-
-const FROM_UNIT = 0
-const TO_UNIT = 1
-
-type Uniforms = Record<string, WebGLUniformLocation | null>
-
-function compile(
-  gl: WebGL2RenderingContext,
-  type: number,
-  source: string
-) {
-  const shader = gl.createShader(type)
-  if (!shader) return null
-  gl.shaderSource(shader, source)
-  gl.compileShader(shader)
-  if (gl.getShaderParameter(shader, gl.COMPILE_STATUS))
-    return shader
-  console.error(gl.getShaderInfoLog(shader))
-  gl.deleteShader(shader)
-  return null
-}
-
-function link(gl: WebGL2RenderingContext) {
-  const vs = compile(gl, gl.VERTEX_SHADER, VERTEX_SHADER)
-  const fs = compile(
-    gl,
-    gl.FRAGMENT_SHADER,
-    FRAGMENT_SHADER
-  )
-  const program = gl.createProgram()
-  if (!vs || !fs || !program) return null
-  gl.attachShader(program, vs)
-  gl.attachShader(program, fs)
-  gl.linkProgram(program)
-  gl.deleteShader(vs)
-  gl.deleteShader(fs)
-  if (gl.getProgramParameter(program, gl.LINK_STATUS))
-    return program
-  console.error(gl.getProgramInfoLog(program))
-  gl.deleteProgram(program)
-  return null
-}
-
-function uniformsOf(
-  gl: WebGL2RenderingContext,
-  program: WebGLProgram
-) {
-  const uniforms: Uniforms = {}
-  const count = gl.getProgramParameter(
-    program,
-    gl.ACTIVE_UNIFORMS
-  )
-  for (let i = 0; i < count; i++) {
-    const info = gl.getActiveUniform(program, i)
-    if (info)
-      uniforms[info.name] = gl.getUniformLocation(
-        program,
-        info.name
-      )
-  }
-  return uniforms
-}
-
-// Program, full-screen quad and texture units.
-function build(gl: WebGL2RenderingContext) {
-  const program = link(gl)
-  if (!program) return null
-  // biome-ignore lint/correctness/useHookAtTopLevel: WebGL's useProgram, not a React hook
-  gl.useProgram(program)
-  const quad = gl.createBuffer()
-  gl.bindBuffer(gl.ARRAY_BUFFER, quad)
-  gl.bufferData(
-    gl.ARRAY_BUFFER,
-    new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]),
-    gl.STATIC_DRAW
-  )
-  const a = gl.getAttribLocation(program, 'a')
-  gl.enableVertexAttribArray(a)
-  gl.vertexAttribPointer(a, 2, gl.FLOAT, false, 0, 0)
-
-  const u = uniformsOf(gl, program)
-  gl.uniform1i(u.uMono, FROM_UNIT)
-  gl.uniform1i(u.uPhoto, TO_UNIT)
-  return { program, quad, u }
-}
-
-function applySettings(
-  gl: WebGL2RenderingContext,
-  u: Uniforms,
-  settings: PrintSettings
-) {
-  for (const [name, value] of settingUniforms(settings)) {
-    if (typeof value === 'number')
-      gl.uniform1f(u[name], value)
-    else gl.uniform3fv(u[name], value)
-  }
-}
-
-function upload(
-  gl: WebGL2RenderingContext,
-  unit: number,
-  source: TexImageSource,
-  previous: WebGLTexture | null
-) {
-  if (previous) gl.deleteTexture(previous)
-  const texture = gl.createTexture()
-  gl.activeTexture(gl.TEXTURE0 + unit)
-  gl.bindTexture(gl.TEXTURE_2D, texture)
-  gl.texImage2D(
-    gl.TEXTURE_2D,
-    0,
-    gl.RGBA,
-    gl.RGBA,
-    gl.UNSIGNED_BYTE,
-    source
-  )
-  gl.generateMipmap(gl.TEXTURE_2D)
-  const param = (name: number, value: number) =>
-    gl.texParameteri(gl.TEXTURE_2D, name, value)
-  param(gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR)
-  param(gl.TEXTURE_MAG_FILTER, gl.LINEAR)
-  param(gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
-  param(gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
-  return texture
 }
 
 interface Side {
@@ -244,9 +113,12 @@ export function createPrinter(
     source: TexImageSource,
     placement: Placement = {}
   ) => {
+    if (!lost) {
+      side.texture = upload(gl, unit, source, side.texture)
+      last = ''
+    }
     side.source = source
     side.placement = placement
-    if (!lost) uploadSide(side, unit)
   }
 
   const onLost = (event: Event) => {
@@ -272,30 +144,6 @@ export function createPrinter(
     onRestored
   )
 
-  // Where a side lands in the W×H view, its tone-blur mip level and
-  // its light-dots dot-size mip level.
-  const place = (
-    source: TexImageSource,
-    placement: Placement,
-    W: number,
-    H: number
-  ) => {
-    const size = sourceSize(source)
-    const rect = placeRect(
-      size.width,
-      size.height,
-      W,
-      H,
-      placement
-    )
-    const lod = lodBias(
-      size.width / rect.width,
-      settings.soft
-    )
-    const dotLod = lodBias(size.width / rect.width, DOT_LOD)
-    return { rect, lod, dotLod }
-  }
-
   return {
     setFrom(source, placement) {
       setSide(from, FROM_UNIT, source, placement)
@@ -309,11 +157,12 @@ export function createPrinter(
       if (!lost && built)
         applySettings(gl, built.u, settings)
     },
-    draw({ W, H, origin, dpr }, { time, fade, press = 1 }) {
+    draw(view, state) {
       if (lost || !built || !from.source || !to.source)
         return false
       if (!from.texture || !to.texture) return false
-      const { u } = built
+      const { W, H, origin, dpr } = view
+      const { time, fade, press = 1 } = state
       const key = [
         W,
         H,
@@ -327,26 +176,20 @@ export function createPrinter(
       ].join()
       if (key === last) return true
       last = key
-      const mono = place(from.source, from.placement, W, H)
-      const photo = place(to.source, to.placement, W, H)
-      gl.viewport(0, 0, canvas.width, canvas.height)
-      gl.uniform2f(u.uOrigin, origin[0], origin[1])
-      gl.uniform2f(u.uCanvas, canvas.width, canvas.height)
-      gl.uniform2f(u.uView, W, H)
-      gl.uniform1f(u.uDpr, dpr)
-      const rect4 = (
-        loc: WebGLUniformLocation | null,
-        r: Rect
-      ) => gl.uniform4f(loc, r.x, r.y, r.width, r.height)
-      rect4(u.uMonoX, mono.rect)
-      rect4(u.uPhotoX, photo.rect)
-      gl.uniform1f(u.uMonoLod, mono.lod)
-      gl.uniform1f(u.uPhotoLod, photo.lod)
-      gl.uniform1f(u.uDotLod, photo.dotLod)
-      gl.uniform1f(u.uTime, time)
-      gl.uniform1f(u.uFade, fade)
-      gl.uniform1f(u.uPress, press)
-      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4)
+      drawPlate(
+        gl,
+        built,
+        {
+          ...from,
+          source: from.source,
+          texture: from.texture
+        },
+        { ...to, source: to.source, texture: to.texture },
+        settings,
+        view,
+        state,
+        canvas
+      )
       return true
     },
     dispose() {
@@ -357,10 +200,7 @@ export function createPrinter(
       )
       gl.deleteTexture(from.texture)
       gl.deleteTexture(to.texture)
-      if (built) {
-        gl.deleteBuffer(built.quad)
-        gl.deleteProgram(built.program)
-      }
+      if (built) disposePlate(gl, built)
       built = null
       from.source = null
       to.source = null

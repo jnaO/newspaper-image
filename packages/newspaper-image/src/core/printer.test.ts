@@ -1,83 +1,19 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 
+import {
+  type Call,
+  draws as countDraws,
+  fakeCanvas,
+  fakeGl,
+  image,
+  uniform as lastUniform,
+  surface
+} from '../../test/fakeGl.js'
 import { createPrinter } from './printer.js'
-import { FRAGMENT_SHADER } from './printShader.js'
 import {
   DEFAULT_SETTINGS,
   resolveSettings
 } from './settings.js'
-
-const UNIFORMS = [
-  ...FRAGMENT_SHADER.matchAll(/^uniform \w+ ([^;]+);/gm)
-]
-  .flatMap((m) => m[1].split(','))
-  .map((name) => name.trim())
-
-type Call = [string, ...unknown[]]
-
-// A WebGL2 context that records every call. Constants are their own
-// names; uniform locations are { name }.
-function fakeGl(calls: Call[]) {
-  const handlers: Record<
-    string,
-    (...args: never[]) => unknown
-  > = {
-    getShaderParameter: () => true,
-    getProgramParameter: (_: unknown, pname: string) =>
-      pname === 'ACTIVE_UNIFORMS' ? UNIFORMS.length : true,
-    getActiveUniform: (_: unknown, i: number) => ({
-      name: UNIFORMS[i]
-    }),
-    getUniformLocation: (_: unknown, name: string) => ({
-      name
-    }),
-    getAttribLocation: () => 0,
-    createShader: () => ({}),
-    createProgram: () => ({}),
-    createBuffer: () => ({}),
-    createTexture: () => ({})
-  }
-  return new Proxy(
-    {},
-    {
-      get(_, key) {
-        if (typeof key !== 'string') return undefined
-        if (key in handlers) return handlers[key]
-        if (/^[A-Z0-9_]+$/.test(key)) return key
-        return (...args: unknown[]) => {
-          calls.push([key, ...args])
-        }
-      }
-    }
-  )
-}
-
-function fakeCanvas(gl: unknown) {
-  const listeners = new Map<string, (e: Event) => void>()
-  const canvas = {
-    width: 200,
-    height: 100,
-    getContext: () => gl,
-    addEventListener: (
-      type: string,
-      fn: (e: Event) => void
-    ) => listeners.set(type, fn),
-    removeEventListener: (type: string) =>
-      listeners.delete(type),
-    fire: (type: string) =>
-      listeners.get(type)?.({
-        preventDefault() {}
-      } as Event)
-  }
-  return canvas
-}
-
-const image = (
-  naturalWidth: number,
-  naturalHeight: number
-) => ({ naturalWidth, naturalHeight }) as HTMLImageElement
-const surface = (width: number, height: number) =>
-  ({ width, height }) as HTMLCanvasElement
 
 const VIEW = {
   W: 100,
@@ -105,17 +41,8 @@ const make = (
   if (!printer) throw new Error('no printer')
   return printer
 }
-const uniform = (name: string) =>
-  calls
-    .filter(
-      ([fn, loc]) =>
-        fn.startsWith('uniform') &&
-        (loc as { name?: string } | null)?.name === name
-    )
-    .at(-1)
-    ?.slice(2)
-const draws = () =>
-  calls.filter(([fn]) => fn === 'drawArrays').length
+const uniform = (name: string) => lastUniform(calls, name)
+const draws = () => countDraws(calls)
 
 describe('createPrinter', () => {
   it('is null without WebGL2', () => {
@@ -198,5 +125,82 @@ describe('createPrinter', () => {
     canvas.fire('webglcontextrestored')
     expect(uniform('uCell')).toEqual([9])
     expect(printer.draw(VIEW, STATE)).toBe(true)
+  })
+
+  it('prints at the canvas backing size', () => {
+    const printer = make()
+    printer.setFrom(image(200, 100))
+    printer.setTo(surface(200, 100))
+    printer.draw(VIEW, STATE)
+    expect(calls).toContainEqual([
+      'viewport',
+      0,
+      0,
+      200,
+      100
+    ])
+    expect(uniform('uCanvas')).toEqual([200, 100])
+  })
+
+  it('binds "from" to unit 0 and "to" to unit 1 at every draw', () => {
+    const printer = make()
+    printer.setFrom(image(200, 100))
+    printer.setTo(surface(200, 100))
+    calls.length = 0
+    printer.draw(VIEW, STATE)
+    const binds = calls
+      .slice(
+        0,
+        calls.findIndex(([fn]) => fn === 'drawArrays')
+      )
+      .filter(([fn]) =>
+        ['activeTexture', 'bindTexture'].includes(fn)
+      )
+    expect(binds).toEqual([
+      ['activeTexture', 'TEXTURE00'],
+      ['bindTexture', 'TEXTURE_2D', { texture: 1 }],
+      ['activeTexture', 'TEXTURE01'],
+      ['bindTexture', 'TEXTURE_2D', { texture: 2 }]
+    ])
+  })
+
+  it('keeps a side as it was when its upload throws', () => {
+    let throwNext = false
+    calls = []
+    canvas = fakeCanvas(
+      fakeGl(calls, {
+        texImage2D: () => {
+          if (throwNext) {
+            throwNext = false
+            throw new Error('tainted')
+          }
+        }
+      })
+    )
+    const printer = make()
+    printer.setFrom(image(200, 100))
+    printer.setTo(surface(200, 100), { fit: 'fill' })
+    printer.draw(VIEW, STATE)
+    calls.length = 0
+    throwNext = true
+    expect(() =>
+      printer.setTo(image(400, 100), {
+        fit: 'cover',
+        position: [1, 0.5]
+      })
+    ).toThrow('tainted')
+    // Only the texture made for the failed upload is deleted.
+    expect(
+      calls.filter(([fn]) => fn === 'deleteTexture')
+    ).toEqual([['deleteTexture', { texture: 3 }]])
+    expect(printer.draw({ ...VIEW, W: 50 }, STATE)).toBe(
+      true
+    )
+    expect(uniform('uPhotoX')).toEqual([0, 0, 50, 50])
+    expect(calls).toContainEqual([
+      'bindTexture',
+      'TEXTURE_2D',
+      { texture: 2 }
+    ])
   })
 })

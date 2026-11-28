@@ -1,6 +1,8 @@
 'use client'
 
 import {
+  createPrinter,
+  createSharedPrinter,
   type PrintSettings,
   resolveSettings,
   totalMs
@@ -15,6 +17,7 @@ import {
 import { PRESETS } from './presets'
 import {
   boxView,
+  GRID_CELLS,
   setupImages,
   setupPrototype,
   setupSite,
@@ -41,7 +44,12 @@ const SCENES = {
   string,
   Pick<PrintCanvasProps, 'className' | 'view' | 'setup'>
 >
-type Scene = keyof typeof SCENES
+// The grid prints GRID_CELLS, each through createSharedPrinter.
+type Scene = keyof typeof SCENES | 'grid'
+const SCENE_NAMES: Scene[] = [
+  ...(Object.keys(SCENES) as Scene[]),
+  'grid'
+]
 
 type NumberKey =
   | 'cell'
@@ -68,6 +76,7 @@ const SELECT_INPUTS: [SelectKey, string[]][] = [
 
 export function PrintCheck() {
   const [scene, setScene] = useState<Scene>('site')
+  const [shared, setShared] = useState(false)
   const [overrides, setOverrides] = useState<
     Partial<PrintSettings>
   >({})
@@ -103,33 +112,53 @@ export function PrintCheck() {
     value: PrintSettings[K] | undefined
   ) => setOverrides((o) => ({ ...o, [key]: value }))
 
-  const { className, view, setup } = SCENES[scene]
-  const canvas = (
-    <PrintCanvas
-      key={scene}
-      className={styles[className]}
-      settings={settings}
-      state={state}
-      view={view}
-      setup={setup}
-      onUnavailable={() => setUnavailable(true)}
-    />
-  )
+  const onUnavailable = () => setUnavailable(true)
+  const canvas =
+    scene === 'grid' ? (
+      <div key="grid" className={styles.grid}>
+        {GRID_CELLS.map(({ id, setup }) => (
+          <PrintCanvas
+            key={id}
+            className={styles.cell}
+            settings={settings}
+            state={state}
+            view={boxView}
+            setup={setup}
+            onUnavailable={onUnavailable}
+            create={createSharedPrinter}
+          />
+        ))}
+      </div>
+    ) : (
+      <PrintCanvas
+        key={`${scene}-${shared}`}
+        className={styles[SCENES[scene].className]}
+        settings={settings}
+        state={state}
+        view={SCENES[scene].view}
+        setup={SCENES[scene].setup}
+        onUnavailable={onUnavailable}
+        create={
+          shared ? createSharedPrinter : createPrinter
+        }
+      />
+    )
 
   return (
     <main className={styles.main}>
       {canvas}
       {unavailable && (
         <p className={styles.unavailable} role="alert">
-          WebGL2 is unavailable, or the print shader failed
-          to build: createPrinter returned null.
+          This browser can't show the print. Try another
+          browser, or turn on hardware acceleration in its
+          settings.
         </p>
       )}
       <details className={styles.panel} open>
         <summary>Print check</summary>
         <fieldset className={styles.row}>
           <legend>Scene</legend>
-          {(Object.keys(SCENES) as Scene[]).map((s) => (
+          {SCENE_NAMES.map((s) => (
             <label key={s}>
               <input
                 type="radio"
@@ -141,6 +170,15 @@ export function PrintCheck() {
             </label>
           ))}
         </fieldset>
+        <label className={styles.field}>
+          <span>shared renderer</span>
+          <input
+            type="checkbox"
+            checked={shared || scene === 'grid'}
+            disabled={scene === 'grid'}
+            onChange={(e) => setShared(e.target.checked)}
+          />
+        </label>
         <fieldset className={styles.presets}>
           <legend>Prototype presets</legend>
           {Object.entries(PRESETS).map(([name, preset]) => (
@@ -262,7 +300,7 @@ export function PrintCheck() {
           onClick={() => setOverrides({})}
           disabled={Object.keys(overrides).length === 0}
         >
-          Reset to DEFAULT_SETTINGS
+          Reset to defaults
         </button>
       </details>
     </main>
