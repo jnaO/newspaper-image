@@ -24,3 +24,5 @@ export {
   hexToRgb,
   resolveSettings
 } from './settings.js'
+export type { SharedPrinterOptions } from './sharedPrinter.js'
+export { createSharedPrinter } from './sharedPrinter.js'
