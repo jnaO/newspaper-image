@@ -37,6 +37,8 @@ let webgl2: number
 let webgl2Available: boolean
 // The next texImage2D throws, as for a tainted source.
 let throwUpload: boolean
+// While true, createProgram returns null, so the plate fails to build.
+let failBuild: boolean
 let printers: Printer[]
 
 const offscreen = () => {
@@ -55,6 +57,7 @@ beforeEach(async () => {
   webgl2 = 0
   webgl2Available = true
   throwUpload = false
+  failBuild = false
   printers = []
   vi.stubGlobal('document', {
     createElement: (tag: string) => {
@@ -63,10 +66,13 @@ beforeEach(async () => {
         getExtension: (name: string) =>
           name === 'WEBGL_lose_context'
             ? {
-                loseContext: () =>
+                loseContext: () => {
                   calls.push(['loseContext'])
+                  canvas.fire('webglcontextlost')
+                }
               }
             : null,
+        createProgram: () => (failBuild ? null : {}),
         texImage2D: (...args: never[]) => {
           calls.push(['texImage2D', ...args])
           if (!throwUpload) return
@@ -397,5 +403,110 @@ describe('createSharedPrinter', () => {
       200,
       100
     ])
+  })
+
+  describe('on context loss', () => {
+    const lose = () => offscreen().fire('webglcontextlost')
+    const restore = () =>
+      offscreen().fire('webglcontextrestored')
+
+    it('returns false from every draw and copies nothing', () => {
+      const a = ready(make())
+      const b = ready(make())
+      lose()
+      calls.length = 0
+      expect(a.draw(VIEW, STATE)).toBe(false)
+      expect(b.draw(VIEW, STATE)).toBe(false)
+      expect(copies()).toEqual([])
+      expect(draws()).toBe(0)
+    })
+
+    it('uploads a source set during the loss on restore', () => {
+      const printer = ready(make())
+      printer.draw(VIEW, STATE)
+      lose()
+      calls.length = 0
+      printer.setTo(surface(400, 100), { fit: 'fill' })
+      expect(uploads()).toBe(0)
+      restore()
+      expect(uploads()).toBe(2)
+      expect(uniform('uPhotoX')).toEqual([0, 0, 100, 50])
+    })
+
+    it('redraws each image at its latest request on restore', () => {
+      const cell = resolveSettings({ cell: 9 })
+      const a = ready(make(undefined, { settings: cell }))
+      const b = ready(make())
+      const idle = ready(make())
+      a.draw(VIEW, STATE)
+      b.draw(VIEW, STATE)
+      lose()
+      a.draw(VIEW, { time: 500, fade: 0 })
+      calls.length = 0
+      restore()
+      expect(draws()).toBe(2)
+      expect(copies()).toHaveLength(2)
+      const times = calls.filter(
+        ([fn, loc]) =>
+          fn === 'uniform1f' &&
+          (loc as { name: string }).name === 'uTime'
+      )
+      expect(times.map(([, , t]) => t)).toEqual([500, 0])
+      expect(calls).toContainEqual([
+        'uniform1f',
+        { name: 'uCell' },
+        9
+      ])
+      void idle
+    })
+
+    it('fires onLost and onRestore once per image', () => {
+      const events: string[] = []
+      for (const name of ['a', 'b'])
+        make(undefined, {
+          onLost: () => events.push(`lost ${name}`),
+          onRestore: () => events.push(`restore ${name}`)
+        })
+      lose()
+      restore()
+      expect(events).toEqual([
+        'lost a',
+        'lost b',
+        'restore a',
+        'restore b'
+      ])
+    })
+
+    it('stays lost when the rebuild fails', () => {
+      const restored: string[] = []
+      const printer = ready(
+        make(undefined, {
+          onRestore: () => restored.push('restore')
+        })
+      )
+      lose()
+      failBuild = true
+      restore()
+      expect(printer.draw(VIEW, STATE)).toBe(false)
+      expect(restored).toEqual([])
+    })
+
+    it('removes both listeners at the last dispose, before releasing', () => {
+      const lost: string[] = []
+      const a = make(undefined, {
+        onLost: () => lost.push('a')
+      })
+      const canvas = offscreen()
+      a.dispose()
+      printers = []
+      expect(calls).toContainEqual(['loseContext'])
+      expect(lost).toEqual([])
+      expect(canvas.listening('webglcontextlost')).toBe(
+        false
+      )
+      expect(canvas.listening('webglcontextrestored')).toBe(
+        false
+      )
+    })
   })
 })
