@@ -127,6 +127,21 @@ describe('createPrinter', () => {
     expect(printer.draw(VIEW, STATE)).toBe(true)
   })
 
+  it('prints at the canvas backing size', () => {
+    const printer = make()
+    printer.setFrom(image(200, 100))
+    printer.setTo(surface(200, 100))
+    printer.draw(VIEW, STATE)
+    expect(calls).toContainEqual([
+      'viewport',
+      0,
+      0,
+      200,
+      100
+    ])
+    expect(uniform('uCanvas')).toEqual([200, 100])
+  })
+
   it('binds "from" to unit 0 and "to" to unit 1 at every draw', () => {
     const printer = make()
     printer.setFrom(image(200, 100))
