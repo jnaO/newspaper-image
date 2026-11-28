@@ -460,6 +460,41 @@ describe('createSharedPrinter', () => {
       void idle
     })
 
+    it('applies the settings again on restore', () => {
+      const printer = ready(
+        make(undefined, {
+          settings: resolveSettings({ cell: 9 })
+        })
+      )
+      printer.draw(VIEW, STATE)
+      lose()
+      calls.length = 0
+      restore()
+      expect(uniform('uCell')).toEqual([9])
+    })
+
+    it('restores the other images when one upload throws', () => {
+      const restored: string[] = []
+      const a = make(undefined, {
+        onRestore: () => restored.push('a')
+      })
+      const bTarget = target()
+      const b = ready(
+        make(bTarget.canvas, {
+          onRestore: () => restored.push('b')
+        })
+      )
+      ready(a).draw(VIEW, STATE)
+      b.draw(VIEW, STATE)
+      lose()
+      throwUpload = true
+      calls.length = 0
+      restore()
+      expect(restored).toEqual(['a', 'b'])
+      expect(copies()).toHaveLength(1)
+      expect(copies()[0][1]).toBe(bTarget.ctx)
+    })
+
     it('fires onLost and onRestore once per image', () => {
       const events: string[] = []
       for (const name of ['a', 'b'])
