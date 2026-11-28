@@ -149,8 +149,9 @@ export function PrintCheck() {
       {canvas}
       {unavailable && (
         <p className={styles.unavailable} role="alert">
-          WebGL2 is unavailable, or the print shader failed
-          to build: createPrinter returned null.
+          This browser can't show the print. Try another
+          browser, or turn on hardware acceleration in its
+          settings.
         </p>
       )}
       <details className={styles.panel} open>
@@ -299,7 +300,7 @@ export function PrintCheck() {
           onClick={() => setOverrides({})}
           disabled={Object.keys(overrides).length === 0}
         >
-          Reset to DEFAULT_SETTINGS
+          Reset to defaults
         </button>
       </details>
     </main>
