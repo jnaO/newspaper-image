@@ -143,3 +143,54 @@ export function setupImages(
     cancelled = true
   }
 }
+
+const SAMPLES = [
+  '/samples/bg.jpg',
+  '/samples/forest.jpg',
+  '/samples/fireweed.jpg'
+]
+const PLACEMENTS: Placement[] = [
+  {},
+  { fit: 'cover', position: [0, 0.5] },
+  { fit: 'fill' },
+  { fit: 'cover', position: [1, 0.5] },
+  { fit: 'cover', position: [0.5, 0] }
+]
+
+const loads = new Map<string, Promise<HTMLImageElement>>()
+const loadOnce = (src: string) => {
+  let load = loads.get(src)
+  if (!load) {
+    load = loadImage(src)
+    loads.set(src, load)
+  }
+  return load
+}
+
+// One grid cell's sources: "from" = SAMPLES[i % 3]; "to" is the same
+// image every fourth cell, else the next sample; placements cycle
+// through PLACEMENTS.
+function setupCell(i: number) {
+  const from = SAMPLES[i % 3]
+  const to = i % 4 === 0 ? from : SAMPLES[(i + 1) % 3]
+  return (printer: Printer, redraw: () => void) => {
+    let cancelled = false
+    Promise.all([loadOnce(from), loadOnce(to)]).then(
+      ([a, b]) => {
+        if (cancelled) return
+        printer.setFrom(a, PLACEMENTS[i % 5])
+        printer.setTo(b, PLACEMENTS[(i + 2) % 5])
+        redraw()
+      }
+    )
+    return () => {
+      cancelled = true
+    }
+  }
+}
+
+// The grid scene's 24 cells, each printed in its own CSS box.
+export const GRID_CELLS = Array.from(
+  { length: 24 },
+  (_, i) => ({ id: `cell-${i}`, setup: setupCell(i) })
+)
